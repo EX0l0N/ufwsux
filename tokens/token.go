@@ -10,6 +10,12 @@ import (
 
 const intervalSec = 300 // 5 min
 
+type HandshakePayload struct {
+	Host string
+	Port string
+	Auth string
+}
+
 func GenerateToken(targetHost, targetPort string, t time.Time) string {
 	step := t.Unix() / intervalSec
 	data := fmt.Sprintf("%s:%s:%d", targetHost, targetPort, step)

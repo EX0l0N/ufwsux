@@ -4,6 +4,7 @@ import (
 	"EX0l0N/ufwsux/v2/netio"
 	"EX0l0N/ufwsux/v2/tokens"
 
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -30,11 +31,16 @@ func tunnelHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetHost := r.Header.Get("X-SSH-Host")
-	targetPort := r.Header.Get("X-SSH-Port")
-	token := r.Header.Get("X-SSH-Auth")
+	var payload tokens.HandshakePayload
+	if err := gob.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	targetHost := payload.Host
+	targetPort := payload.Port
+	token := payload.Auth
 	if targetHost == "" || targetPort == "" || token == "" {
-		http.Error(w, "missing headers", http.StatusBadRequest)
+		http.Error(w, "missing fields", http.StatusBadRequest)
 		return
 	}
 

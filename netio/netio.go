@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"strings"
 	"sync"
 )
@@ -22,22 +21,6 @@ func IsBenign(err error) bool {
 			strings.Contains(s, "connection reset by peer"),
 			strings.Contains(s, "broken pipe"),
 			strings.Contains(s, "i/o timeout"):
-			return true
-		}
-	}
-
-	if se, ok := err.(*os.SyscallError); ok && se.Err != nil {
-		s := se.Err.Error()
-		switch {
-		case strings.Contains(s, "connection reset by peer"),
-			strings.Contains(s, "broken pipe"),
-			strings.Contains(s, "i/o timeout"):
-			return true
-		}
-	}
-
-	if pe, ok := err.(*os.PathError); ok && pe.Err != nil {
-		if strings.Contains(pe.Err.Error(), "file already closed") {
 			return true
 		}
 	}

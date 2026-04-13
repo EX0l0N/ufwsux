@@ -5,6 +5,8 @@ import (
 	"EX0l0N/ufwsux/v2/tokens"
 
 	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -23,7 +25,11 @@ type stdioRW struct {
 
 func (s *stdioRW) Read(p []byte) (int, error)  { return s.in.Read(p) }
 func (s *stdioRW) Write(p []byte) (int, error) { return s.out.Write(p) }
-func (s *stdioRW) Close() error                { return nil }
+func (s *stdioRW) Close() error {
+	s.out.Close()
+	s.in.Close()
+	return nil
+}
 
 func main() {
 	if len(os.Args) < 4 {
@@ -41,19 +47,26 @@ func main() {
 	defer conn.Close()
 
 	token := tokens.GenerateToken(sshHost, sshPort, time.Now())
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(tokens.HandshakePayload{Host: sshHost, Port: sshPort, Auth: token}); err != nil {
+		log.Fatalf("encode payload failed: %v", err)
+	}
+	body := buf.Bytes()
 	reqHeaders := []string{
-		fmt.Sprintf("GET /ufwsux HTTP/1.1"),
+		"POST /ufwsux HTTP/1.1",
 		fmt.Sprintf("Host: %s", httpHost),
 		"Connection: Upgrade",
 		fmt.Sprintf("Upgrade: %s", protoName),
-		fmt.Sprintf("X-SSH-Host: %s", sshHost),
-		fmt.Sprintf("X-SSH-Port: %s", sshPort),
-		fmt.Sprintf("X-SSH-Auth: %s", token),
+		"Content-Type: application/octet-stream",
+		fmt.Sprintf("Content-Length: %d", len(body)),
 		"", "",
 	}
 	req := strings.Join(reqHeaders, "\r\n")
 	if _, err := conn.Write([]byte(req)); err != nil {
 		log.Fatalf("write request failed: %v", err)
+	}
+	if _, err := conn.Write(body); err != nil {
+		log.Fatalf("write payload failed: %v", err)
 	}
 
 	br := bufio.NewReader(conn)
